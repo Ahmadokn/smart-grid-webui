@@ -32,3 +32,10 @@ This app does not store data directly. It communicates with other backend servic
 ├── .env.example
 ├── .gitignore
 └── README.md
+
+Make sure to add these as environment variables:
+
+METER_SERVICE_URL=https://meter-registration-service-ethzdmb2dvanhbft.centralindia-01.azurewebsites.net
+COLLECTION_SERVICE_URL=https://smartgrid-data-collection.azurewebsites.net
+ANALYSIS_SERVICE_URL=https://smartgrid-data-analysis.azurewebsites.net
+SECRET_KEY=change-this-secret-key
