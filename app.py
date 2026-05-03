@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for, flash
 from services import (
     list_meters,
@@ -14,6 +15,34 @@ from services import (
 
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "smartgrid-client-secret")
+
+DATASET_START = "2007-01-01"
+DATASET_END = "2007-06-30"
+
+def is_valid_dataset_date(date_text):
+    if not date_text:
+        return True
+
+    try:
+        date_value = datetime.strptime(date_text, "%Y-%m-%d").date()
+        start = datetime.strptime(DATASET_START, "%Y-%m-%d").date()
+        end = datetime.strptime(DATASET_END, "%Y-%m-%d").date()
+        return start <= date_value <= end
+    except ValueError:
+        return False
+
+def dates_are_valid(start_date, end_date):
+    if not is_valid_dataset_date(start_date):
+        return False
+
+    if not is_valid_dataset_date(end_date):
+        return False
+
+    if start_date and end_date:
+        return start_date <= end_date
+
+    return True
+
 
 @app.route("/", methods=["GET"])
 def index():
@@ -34,20 +63,25 @@ def index():
         flash(f"Failed to load meters: {e}", "error")
 
     if selected_meter_id or start_date or end_date:
-        try:
-            meter_id = int(selected_meter_id) if selected_meter_id else None
-            readings = get_readings(
-                meter_id=meter_id,
-                start_date=start_date or None,
-                end_date=end_date or None
-            )
-        except Exception as e:
-            flash(f"Failed to load readings: {e}", "error")
+        if not dates_are_valid(start_date, end_date):
+            flash("Dates must be between 2007-01-01 and 2007-06-30, and start date must be before end date.", "error")
+        else:
+            try:
+                meter_id = int(selected_meter_id) if selected_meter_id else None
+                readings = get_readings(
+                    meter_id=meter_id,
+                    start_date=start_date or None,
+                    end_date=end_date or None
+                )
+            except Exception as e:
+                flash(f"Failed to load readings: {e}", "error")
 
     if analysis_type:
         try:
             if not selected_meter_id or not start_date or not end_date:
                 flash("Meter ID, start date, and end date are required for analysis.", "error")
+            elif not dates_are_valid(start_date, end_date):
+                flash("Analysis dates must be between 2007-01-01 and 2007-06-30, and start date must be before end date.", "error")
             else:
                 meter_id = int(selected_meter_id)
 
@@ -129,6 +163,10 @@ def simulate():
 
     if not meter_id:
         flash("Meter ID is required for simulation.", "error")
+        return redirect(url_for("index"))
+
+    if not dates_are_valid(start_date, end_date):
+        flash("Simulation dates must be between 2007-01-01 and 2007-06-30, and start date must be before end date.", "error")
         return redirect(url_for("index"))
 
     try:
